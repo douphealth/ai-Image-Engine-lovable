@@ -213,7 +213,6 @@ export const analyzeAEO = async (
 export const testTextAIProvider = async (config: AnalysisAIConfig) => {
   try {
     const ai = getGeminiClient(config.apiKey);
-    // Simple ping to check connectivity and auth
     await ai.models.generateContent({ 
       model: TEXT_MODEL, 
       contents: 'ping',
@@ -221,7 +220,14 @@ export const testTextAIProvider = async (config: AnalysisAIConfig) => {
     });
     return { success: true, message: `Connected to ${TEXT_MODEL}` };
   } catch (e: any) {
-    return { success: false, message: e.message || "Connection Failed" };
+    const msg = e.message || JSON.stringify(e) || "Connection Failed";
+    if (msg.includes('RESOURCE_EXHAUSTED') || msg.includes('429') || msg.includes('exceeded your current quota')) {
+      return { success: false, message: '⚠️ API quota exhausted. Your free tier is used up. Upgrade to a paid Gemini plan or use a new API key.' };
+    }
+    if (msg.includes('API_KEY_INVALID') || msg.includes('401')) {
+      return { success: false, message: '🔑 Invalid API key. Please check your Gemini API key.' };
+    }
+    return { success: false, message: msg.slice(0, 200) };
   }
 };
 
