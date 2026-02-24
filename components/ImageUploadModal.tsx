@@ -105,7 +105,7 @@ const ImageUploadModal: React.FC<Props> = ({
           afterElement: el.tagName.toLowerCase() as any,
           position: index,
           context: text.slice(0, 120) + (text.length > 120 ? '...' : ''),
-          recommended: gapSinceLastImage > 4 || el.tagName.match(/^H[23]$/),
+          recommended: gapSinceLastImage > 4 || !!el.tagName.match(/^H[23]$/),
           reason: el.tagName.match(/^H[23]$/) 
             ? 'After section heading' 
             : gapSinceLastImage > 4 

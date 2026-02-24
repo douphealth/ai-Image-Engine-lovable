@@ -444,7 +444,7 @@ export class UltraFastFetcher {
 
   private shouldRetry(error: unknown): boolean {
     if (error instanceof APIError) {
-      return error.isRetryable || error.statusCode === 429 || (error.statusCode && error.statusCode >= 500);
+      return !!(error.isRetryable || error.statusCode === 429 || (error.statusCode && error.statusCode >= 500));
     }
     return error instanceof TypeError; // Network errors
   }

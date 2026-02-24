@@ -81,7 +81,7 @@ function analyzePost(post: WordPressPost): { contentImages: ContentImage[]; anal
     insertionPoints: [],
     imageGaps: [],
     averageImageDistance: paragraphCount / Math.max(1, images.length),
-    recommendedImageCount: Math.ceil(post.wordCount / 300),
+    recommendedImageCount: Math.ceil((post.wordCount ?? 0) / 300),
     qualityScore: Math.min(100, images.length * 20 + (post.featured_media ? 50 : 0)),
     paragraphCount,
   };

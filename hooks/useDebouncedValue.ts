@@ -25,8 +25,8 @@ export const useDebouncedValue = <T>(
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
   const [isPending, setIsPending] = useState(false);
   
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const maxWaitTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const maxWaitTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastCallRef = useRef<number>(0);
   const lastValueRef = useRef<T>(value);
   const leadingCalledRef = useRef(false);
