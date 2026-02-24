@@ -443,7 +443,7 @@ const MediaLibraryBrowser: React.FC<Props> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<NodeJS.Timeout>(undefined);
 
   // Derived state
   const selectedItems = useMemo(() => 

@@ -38,7 +38,7 @@ export const useVirtualList = (options: VirtualListOptions): VirtualListResult =
 
   const [scrollOffset, setScrollOffset] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
-  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const containerRef = useRef<HTMLElement | null>(null);
 
   // Calculate item sizes
