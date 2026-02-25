@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { 
   AIProvider, 
   AnalysisAIConfig, 
@@ -9,32 +9,24 @@ import {
   SEOContext, 
   AEOAnalysis,
   ImageBrief,
+  TextAIProvider,
 } from '../types';
 
 // ============================================================
-// SOTA MODEL CONFIGURATION - PRODUCTION TIER
+// MODEL CONFIGURATION
 // ============================================================
-const TEXT_MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
-];
-const TEXT_MODEL = TEXT_MODELS[0];
-const IMAGE_MODEL = 'gemini-2.0-flash-exp';
-// ============================================================
+const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-const sanitizeApiKey = (key: string): string => {
-  return key.replace(/[^\x20-\x7E]/g, '').trim();
-};
+const OPENROUTER_MODELS = ['google/gemini-2.5-flash-preview', 'google/gemini-2.0-flash-001', 'meta-llama/llama-4-maverick'];
+const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+
+const sanitizeApiKey = (key: string): string => key.replace(/[^\x20-\x7E]/g, '').trim();
 
 const isHeuristicMode = (config: AnalysisAIConfig): boolean => {
-  return !config.apiKey && !process.env.API_KEY;
-};
-
-const getGeminiClient = (apiKey?: string) => {
-  const key = apiKey || process.env.API_KEY;
-  if (!key) throw new Error("API Key Configuration Missing");
-  return new GoogleGenAI({ apiKey: sanitizeApiKey(key) });
+  if (config.provider === TextAIProvider.None) return true;
+  return !config.apiKey;
 };
 
 const stripHtml = (html: string): string => {
@@ -68,8 +60,115 @@ const fetchImageAsBase64 = async (imageUrl: string, signal?: AbortSignal): Promi
 };
 
 // ============================================================
-// TEXT GENERATION
+// OPENAI-COMPATIBLE API (OpenRouter, Groq)
 // ============================================================
+
+const callOpenAICompatible = async (
+  baseUrl: string,
+  apiKey: string,
+  models: string[],
+  prompt: string,
+  options?: { maxTokens?: number; jsonMode?: boolean; signal?: AbortSignal }
+): Promise<string> => {
+  const key = sanitizeApiKey(apiKey);
+  
+  for (const model of models) {
+    try {
+      const body: any = {
+        model,
+        messages: [{ role: 'user', content: prompt }],
+      };
+      if (options?.maxTokens) body.max_tokens = options.maxTokens;
+      if (options?.jsonMode) body.response_format = { type: 'json_object' };
+
+      const response = await fetch(baseUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${key}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': window.location.origin,
+        },
+        body: JSON.stringify(body),
+        signal: options?.signal,
+      });
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        const errMsg = errBody?.error?.message || response.statusText;
+        if ((response.status === 429 || errMsg.includes('rate')) && model !== models[models.length - 1]) {
+          console.warn(`${model} rate limited, trying next...`);
+          continue;
+        }
+        throw new Error(`${response.status}: ${errMsg}`);
+      }
+
+      const data = await response.json();
+      return data.choices?.[0]?.message?.content || '';
+    } catch (e: any) {
+      if (model === models[models.length - 1]) throw e;
+      console.warn(`${model} failed, trying next...`, e.message);
+    }
+  }
+  throw new Error('All models exhausted');
+};
+
+// ============================================================
+// GEMINI API
+// ============================================================
+
+const callGemini = async (
+  apiKey: string,
+  prompt: string,
+  options?: { maxTokens?: number; jsonMode?: boolean; model?: string }
+): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: sanitizeApiKey(apiKey) });
+  const modelsToTry = options?.model ? [options.model, ...GEMINI_MODELS] : GEMINI_MODELS;
+
+  for (const model of modelsToTry) {
+    try {
+      const config: any = {};
+      if (options?.maxTokens) config.maxOutputTokens = options.maxTokens;
+      if (options?.jsonMode) config.responseMimeType = 'application/json';
+
+      const response = await ai.models.generateContent({ model, contents: prompt, config });
+      return response.text || '';
+    } catch (e: any) {
+      const msg = e.message || '';
+      const isQuota = msg.includes('RESOURCE_EXHAUSTED') || msg.includes('429');
+      if (isQuota && model !== modelsToTry[modelsToTry.length - 1]) {
+        console.warn(`${model} quota exhausted, trying next...`);
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw new Error('All Gemini models exhausted');
+};
+
+// ============================================================
+// UNIFIED TEXT GENERATION
+// ============================================================
+
+const generateWithProvider = async (
+  config: AnalysisAIConfig,
+  prompt: string,
+  options?: { maxTokens?: number; jsonMode?: boolean; signal?: AbortSignal }
+): Promise<string> => {
+  if (!config.apiKey) throw new Error('No API key configured');
+  
+  switch (config.provider) {
+    case TextAIProvider.OpenRouter:
+      return callOpenAICompatible(OPENROUTER_URL, config.apiKey, OPENROUTER_MODELS, prompt, options);
+    case TextAIProvider.Groq:
+      return callOpenAICompatible(GROQ_URL, config.apiKey, GROQ_MODELS, prompt, options);
+    case TextAIProvider.Gemini:
+      return callGemini(config.apiKey, prompt, { maxTokens: options?.maxTokens, jsonMode: options?.jsonMode, model: config.model });
+    case TextAIProvider.OpenAI:
+      return callOpenAICompatible('https://api.openai.com/v1/chat/completions', config.apiKey, ['gpt-4o-mini', 'gpt-3.5-turbo'], prompt, options);
+    default:
+      throw new Error(`Unknown provider: ${config.provider}`);
+  }
+};
 
 export const generateText = async (
   config: AnalysisAIConfig, 
@@ -78,29 +177,7 @@ export const generateText = async (
   signal?: AbortSignal
 ): Promise<string> => {
   if (isHeuristicMode(config)) return "";
-  
-  const ai = getGeminiClient(config.apiKey);
-  const modelsToTry = config.model ? [config.model, ...TEXT_MODELS] : TEXT_MODELS;
-  
-  for (const model of modelsToTry) {
-    try {
-      const response = await ai.models.generateContent({ 
-        model,
-        contents: prompt,
-        config: { maxOutputTokens: maxTokens }
-      });
-      return response.text || "";
-    } catch (e: any) {
-      const msg = e.message || '';
-      const isQuotaError = msg.includes('RESOURCE_EXHAUSTED') || msg.includes('429');
-      if (isQuotaError && model !== modelsToTry[modelsToTry.length - 1]) {
-        console.warn(`Model ${model} quota exhausted, trying next...`);
-        continue;
-      }
-      throw e;
-    }
-  }
-  throw new Error("All Gemini models exhausted");
+  return generateWithProvider(config, prompt, { maxTokens, signal });
 };
 
 // ============================================================
@@ -143,14 +220,8 @@ JSON Output Required:
 }`;
 
   try {
-    const ai = getGeminiClient(config.apiKey);
-    const response = await ai.models.generateContent({
-      model: config.model || TEXT_MODEL,
-      contents: prompt,
-      config: { responseMimeType: "application/json" },
-    });
-    
-    const jsonStr = extractJson(response.text || "{}");
+    const text = await generateWithProvider(config, prompt, { jsonMode: true, signal });
+    const jsonStr = extractJson(text || "{}");
     const data = JSON.parse(jsonStr || "{}");
     if (!data.brief) throw new Error("Invalid JSON response from AI");
     return { postId: post.id, ...data };
@@ -170,21 +241,16 @@ export const generateImage = async (
   settings: ImageSettings, 
   signal?: AbortSignal
 ): Promise<string> => {
-  if (imageConfig.provider === AIProvider.Gemini) {
+  if (imageConfig.provider === AIProvider.Gemini && imageConfig.apiKey) {
     try {
-      const ai = getGeminiClient(imageConfig.apiKey);
+      const ai = new GoogleGenAI({ apiKey: sanitizeApiKey(imageConfig.apiKey) });
       const response = await ai.models.generateContent({
-        model: IMAGE_MODEL,
+        model: 'gemini-2.0-flash-exp',
         contents: { parts: [{ text: prompt }] },
-        config: {
-          imageConfig: { aspectRatio: settings.aspectRatio }
-        }
+        config: { imageConfig: { aspectRatio: settings.aspectRatio } }
       });
-
       for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          return `data:image/png;base64,${part.inlineData.data}`;
-        }
+        if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
       }
       throw new Error("No image data in Gemini response");
     } catch (error) {
@@ -198,7 +264,6 @@ export const generateImage = async (
   const seed = Math.floor(Math.random() * 1000000);
   const safePrompt = encodeURIComponent(prompt.slice(0, 500));
   const url = `https://image.pollinations.ai/prompt/${safePrompt}?width=${d.w}&height=${d.h}&nologo=true&seed=${seed}&model=flux`;
-  
   return fetchImageAsBase64(url, signal);
 };
 
@@ -224,18 +289,12 @@ export const analyzeAEO = async (
   if (isHeuristicMode(config)) return heuristicResult;
 
   try {
-    const ai = getGeminiClient(config.apiKey);
     const prompt = `Analyze AEO (Answer Engine Optimization) for: "${title}".
     Keywords: ${seo.primaryKeywords}
     Return JSON: { "score": number, "suggestions": string[], "qaPairs": [{"question":string, "answer":string}], "serpSnippet": string }`;
 
-    const response = await ai.models.generateContent({
-      model: config.model || TEXT_MODEL,
-      contents: prompt,
-      config: { responseMimeType: "application/json" },
-    });
-    
-    const result = JSON.parse(extractJson(response.text || "{}") || "{}");
+    const text = await generateWithProvider(config, prompt, { jsonMode: true, signal });
+    const result = JSON.parse(extractJson(text || "{}") || "{}");
     return { ...result, sources: [] };
   } catch (e) {
     return heuristicResult;
@@ -248,50 +307,31 @@ export const analyzeAEO = async (
 
 export const testTextAIProvider = async (config: AnalysisAIConfig) => {
   if (isHeuristicMode(config)) {
-    return { success: true, message: '✅ Heuristic mode — no API key needed. Briefs auto-generated from post titles.' };
+    return { success: true, message: '✅ Heuristic mode — no API key needed.' };
   }
 
-  const ai = getGeminiClient(config.apiKey);
-  const modelsToTry = config.model ? [config.model, ...TEXT_MODELS] : TEXT_MODELS;
-  
-  for (const model of modelsToTry) {
-    try {
-      await ai.models.generateContent({ 
-        model, 
-        contents: 'ping',
-        config: { maxOutputTokens: 1 }
-      });
-      return { success: true, message: `✅ Connected via ${model}` };
-    } catch (e: any) {
-      const msg = e.message || JSON.stringify(e) || '';
-      const isQuota = msg.includes('RESOURCE_EXHAUSTED') || msg.includes('429') || msg.includes('exceeded your current quota');
-      if (isQuota && model !== modelsToTry[modelsToTry.length - 1]) {
-        console.warn(`${model} quota exhausted, trying next...`);
-        continue;
-      }
-      if (msg.includes('API_KEY_INVALID') || msg.includes('401')) {
-        return { success: false, message: '🔑 Invalid API key.' };
-      }
-      if (isQuota) {
-        return { success: false, message: '⚠️ Quota exhausted. Switch to "None (Heuristic)" or upgrade plan.' };
-      }
-      return { success: false, message: msg.slice(0, 200) };
+  try {
+    await generateWithProvider(config, 'Reply with "ok"', { maxTokens: 5 });
+    return { success: true, message: `✅ Connected to ${config.provider}` };
+  } catch (e: any) {
+    const msg = e.message || '';
+    if (msg.includes('401') || msg.includes('invalid') || msg.includes('Invalid') || msg.includes('API_KEY_INVALID')) {
+      return { success: false, message: '🔑 Invalid API key. Check it and try again.' };
     }
+    if (msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
+      return { success: false, message: '⚠️ Quota exhausted. Switch to "None (Heuristic)" or use a different key.' };
+    }
+    return { success: false, message: msg.slice(0, 200) };
   }
-  return { success: false, message: '⚠️ All models failed' };
 };
 
 export const testImageAIProvider = async (config: ImageAIConfig) => {
-  if (config.provider === AIProvider.Pollinations) return { success: true, message: "Pollinations Connected" };
+  if (config.provider === AIProvider.Pollinations) return { success: true, message: "✅ Pollinations Connected (Free)" };
   
   try {
-    const ai = getGeminiClient(config.apiKey);
-    await ai.models.generateContent({ 
-        model: TEXT_MODEL, 
-        contents: 'ping',
-        config: { maxOutputTokens: 1 }
-    });
-    return { success: true, message: "Gemini Image Engine Ready" };
+    const ai = new GoogleGenAI({ apiKey: sanitizeApiKey(config.apiKey || '') });
+    await ai.models.generateContent({ model: 'gemini-2.0-flash', contents: 'ping', config: { maxOutputTokens: 1 } });
+    return { success: true, message: "✅ Gemini Image Engine Ready" };
   } catch (e: any) {
     return { success: false, message: e.message };
   }
