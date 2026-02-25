@@ -33,6 +33,12 @@ interface WPFetchOptions extends RequestInit {
   skipCache?: boolean;
 }
 
+// CORS proxy list for fallback when direct requests fail
+const CORS_PROXIES = [
+  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+];
+
 const wpFetch = async <T = unknown>(
   baseUrl: string,
   endpoint: string,
@@ -49,13 +55,66 @@ const wpFetch = async <T = unknown>(
 
   const { timeout = 60000, skipCache, ...fetchOptions } = options;
 
+  // Try direct fetch first
   try {
-    const response = await fetchWithRetry(url, { ...fetchOptions, headers }, { maxRetries: 3 }, timeout);
+    const response = await fetchWithRetry(url, { ...fetchOptions, headers }, { maxRetries: 1 }, timeout);
     const data = await response.json() as T;
     return { data, headers: response.headers };
-  } catch (error) {
-    if (error instanceof APIError && error.statusCode === 401) throw new AuthenticationError('Invalid WordPress credentials');
-    throw error;
+  } catch (directError) {
+    if (directError instanceof APIError && directError.statusCode === 401) {
+      throw new AuthenticationError('Invalid WordPress credentials');
+    }
+    
+    // If it's a network/CORS error, try proxies
+    const isNetworkError = directError instanceof TypeError || 
+      (directError instanceof Error && directError.message.includes('Failed to fetch'));
+    
+    if (!isNetworkError) throw directError;
+    
+    console.warn('Direct WP fetch failed (likely CORS), trying proxy fallback...');
+    
+    // For non-GET requests with auth, proxies won't work well - throw clear error
+    if (options.method && options.method !== 'GET') {
+      throw new Error(
+        'CORS blocked. Your WordPress site needs CORS headers for write operations. ' +
+        'Install the "WP CORS" or "Enable CORS" plugin on your WordPress site, ' +
+        'or add this to your theme\'s functions.php:\n' +
+        'add_filter("rest_pre_serve_request", function($v) { header("Access-Control-Allow-Origin: *"); header("Access-Control-Allow-Headers: Authorization, Content-Type"); return $v; });'
+      );
+    }
+
+    // Try CORS proxies for GET requests
+    for (const proxyFn of CORS_PROXIES) {
+      try {
+        const proxyUrl = proxyFn(url);
+        const proxyHeaders = new Headers();
+        if (authHeader) proxyHeaders.set('Authorization', authHeader);
+        
+        const response = await fetch(proxyUrl, { 
+          ...fetchOptions, 
+          headers: proxyHeaders,
+          signal: AbortSignal.timeout(timeout)
+        });
+        
+        if (!response.ok) continue;
+        
+        const data = await response.json() as T;
+        // Proxy responses don't have WP headers, so create synthetic ones
+        const syntheticHeaders = new Headers(response.headers);
+        return { data, headers: syntheticHeaders };
+      } catch (proxyError) {
+        console.warn('Proxy fallback failed, trying next...', proxyError);
+        continue;
+      }
+    }
+
+    // All proxies failed
+    throw new Error(
+      'Cannot connect to WordPress (CORS blocked). Solutions:\n' +
+      '1. Install "WP CORS" plugin on your WordPress site\n' +
+      '2. Or add CORS headers to your theme\'s functions.php\n' +
+      '3. Or test from your own domain (not the Lovable preview)'
+    );
   }
 };
 
