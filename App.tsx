@@ -402,7 +402,7 @@ const App: React.FC = () => {
     const startTime = performance.now();
     const baseUrl = newConfig.wordpress.url.replace(/\/$/, '');
     const authHeader = newConfig.wordpress.appPassword 
-      ? `Basic ${btoa(`${newConfig.wordpress.username}:${newConfig.wordpress.appPassword}`)}` 
+      ? `Basic ${btoa(unescape(encodeURIComponent(`${newConfig.wordpress.username}:${newConfig.wordpress.appPassword}`)))}` 
       : null;
     
     let requestsCompleted = 0;
