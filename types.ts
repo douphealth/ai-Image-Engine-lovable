@@ -16,6 +16,7 @@ export enum AIProvider {
 }
 
 export enum TextAIProvider {
+  None = 'None (Heuristic)',
   Gemini = 'Google Gemini',
   OpenAI = 'OpenAI',
   Groq = 'Groq',

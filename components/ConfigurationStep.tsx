@@ -53,11 +53,11 @@ const ConfigurationStep: React.FC<Props> = ({ onConfigure, initialConfig }) => {
 
   // AI providers - FIXED: Use Pollinations by default (free, reliable)
   const [imageProvider, setImageProvider] = useState<AIProvider>(AIProvider.Pollinations);
-  const [analysisProvider, setAnalysisProvider] = useState<TextAIProvider>(TextAIProvider.Gemini);
+  const [analysisProvider, setAnalysisProvider] = useState<TextAIProvider>(TextAIProvider.None);
   
   // FIXED: Correct model names (these are used as fallbacks, the service uses hardcoded correct models)
   const [imageModel, setImageModel] = useState('pollinations'); // Not actually used for Pollinations
-  const [analysisModel, setAnalysisModel] = useState('gemini-3-flash-preview'); // CORRECT model name
+  const [analysisModel, setAnalysisModel] = useState('gemini-2.5-flash');
   const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
 
   // Image settings
@@ -253,6 +253,9 @@ const ConfigurationStep: React.FC<Props> = ({ onConfigure, initialConfig }) => {
                             <select value={analysisProvider} onChange={(e) => setAnalysisProvider(e.target.value as TextAIProvider)} className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-text-primary outline-none">
                                 {Object.values(TextAIProvider).map(p => <option key={p} value={p}>{p}</option>)}
                             </select>
+                            {analysisProvider === TextAIProvider.None && (
+                              <p className="text-[10px] text-emerald-500 mt-2">✓ No API key needed — briefs generated from post titles</p>
+                            )}
                         </div>
                     </div>
                 </fieldset>
