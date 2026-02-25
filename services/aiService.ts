@@ -14,9 +14,14 @@ import {
 // ============================================================
 // SOTA MODEL CONFIGURATION - PRODUCTION TIER
 // ============================================================
-const TEXT_MODEL = 'gemini-2.0-flash'; // Most stable reasoning model
-const TEXT_MODEL_FALLBACK = 'gemini-1.5-flash';
-const IMAGE_MODEL = 'gemini-2.0-flash-exp'; // Experimental visual generation
+// Model priority: try newer models first, fall back to ones with free quota
+const TEXT_MODELS = [
+  'gemini-2.5-flash',      // Newest, best if quota available
+  'gemini-2.0-flash',      // Good but free tier often exhausted
+  'gemini-1.5-flash',      // Most reliable free tier model
+];
+const TEXT_MODEL = TEXT_MODELS[0];
+const IMAGE_MODEL = 'gemini-2.0-flash-exp';
 // ============================================================
 
 const getGeminiClient = (apiKey?: string) => {
@@ -62,24 +67,27 @@ export const generateText = async (
   signal?: AbortSignal
 ): Promise<string> => {
   const ai = getGeminiClient(config.apiKey);
+  const modelsToTry = config.model ? [config.model, ...TEXT_MODELS] : TEXT_MODELS;
   
-  // Retry logic with model fallback
-  try {
-    const response = await ai.models.generateContent({ 
-      model: config.model || TEXT_MODEL,
-      contents: prompt,
-      config: { maxOutputTokens: maxTokens }
-    });
-    return response.text || "";
-  } catch (e: any) {
-    console.warn(`Primary model failed, attempting fallback to ${TEXT_MODEL_FALLBACK}`, e);
-    const response = await ai.models.generateContent({ 
-      model: TEXT_MODEL_FALLBACK,
-      contents: prompt,
-      config: { maxOutputTokens: maxTokens }
-    });
-    return response.text || "";
+  for (const model of modelsToTry) {
+    try {
+      const response = await ai.models.generateContent({ 
+        model,
+        contents: prompt,
+        config: { maxOutputTokens: maxTokens }
+      });
+      return response.text || "";
+    } catch (e: any) {
+      const msg = e.message || '';
+      const isQuotaError = msg.includes('RESOURCE_EXHAUSTED') || msg.includes('429');
+      if (isQuotaError && model !== modelsToTry[modelsToTry.length - 1]) {
+        console.warn(`Model ${model} quota exhausted, trying next...`);
+        continue;
+      }
+      throw e;
+    }
   }
+  throw new Error("All Gemini models exhausted");
 };
 
 export const generateImageBrief = async (
@@ -211,24 +219,34 @@ export const analyzeAEO = async (
 };
 
 export const testTextAIProvider = async (config: AnalysisAIConfig) => {
-  try {
-    const ai = getGeminiClient(config.apiKey);
-    await ai.models.generateContent({ 
-      model: TEXT_MODEL, 
-      contents: 'ping',
-      config: { maxOutputTokens: 1 }
-    });
-    return { success: true, message: `Connected to ${TEXT_MODEL}` };
-  } catch (e: any) {
-    const msg = e.message || JSON.stringify(e) || "Connection Failed";
-    if (msg.includes('RESOURCE_EXHAUSTED') || msg.includes('429') || msg.includes('exceeded your current quota')) {
-      return { success: false, message: '⚠️ API quota exhausted. Your free tier is used up. Upgrade to a paid Gemini plan or use a new API key.' };
+  const ai = getGeminiClient(config.apiKey);
+  const modelsToTry = config.model ? [config.model, ...TEXT_MODELS] : TEXT_MODELS;
+  
+  for (const model of modelsToTry) {
+    try {
+      await ai.models.generateContent({ 
+        model, 
+        contents: 'ping',
+        config: { maxOutputTokens: 1 }
+      });
+      return { success: true, message: `✅ Connected via ${model}` };
+    } catch (e: any) {
+      const msg = e.message || JSON.stringify(e) || '';
+      const isQuota = msg.includes('RESOURCE_EXHAUSTED') || msg.includes('429') || msg.includes('exceeded your current quota');
+      if (isQuota && model !== modelsToTry[modelsToTry.length - 1]) {
+        console.warn(`${model} quota exhausted, trying next...`);
+        continue;
+      }
+      if (msg.includes('API_KEY_INVALID') || msg.includes('401')) {
+        return { success: false, message: '🔑 Invalid API key. Please check your Gemini API key.' };
+      }
+      if (isQuota) {
+        return { success: false, message: '⚠️ All Gemini models quota exhausted. Upgrade to a paid plan at ai.google.dev.' };
+      }
+      return { success: false, message: msg.slice(0, 200) };
     }
-    if (msg.includes('API_KEY_INVALID') || msg.includes('401')) {
-      return { success: false, message: '🔑 Invalid API key. Please check your Gemini API key.' };
-    }
-    return { success: false, message: msg.slice(0, 200) };
   }
+  return { success: false, message: '⚠️ All models failed' };
 };
 
 export const testImageAIProvider = async (config: ImageAIConfig) => {
