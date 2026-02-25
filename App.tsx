@@ -1027,8 +1027,8 @@ const App: React.FC = () => {
     return (
       <ErrorBoundary
         fallback={(error, reset) => (
-          <div className="bg-surface rounded-2xl p-8 border border-red-500/20 text-center">
-            <h2 className="text-xl font-bold text-red-500 mb-4">Something went wrong</h2>
+          <div className="bg-surface rounded-2xl p-8 border border-danger/20 text-center">
+            <h2 className="text-xl font-bold text-danger mb-4">Something went wrong</h2>
             <p className="text-text-secondary mb-4">{error.message}</p>
             <button 
               onClick={reset}
@@ -1048,100 +1048,104 @@ const App: React.FC = () => {
   }, [appState, config, posts, crawlProgress, crawlError, fetchStats, handleStartCrawling, handleReset, handleBackToConfig, handleUpdatePosts, handleCancelCrawling, persistence, appStats]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center p-4 sm:p-6 lg:p-8">
-      <header className="w-full max-w-7xl mx-auto flex justify-between items-center mb-6 pb-4 border-b border-border">
-        <div>
-          <button 
-            onClick={handleReset}
-            className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
-          >
-            <AppIcon className="h-9 w-9" />
-            <span className="text-2xl font-bold text-text-primary tracking-tight">AI Image Engine</span>
-          </button>
-          <a 
-            href="https://affiliatemarketingforsuccess.com" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-xs text-muted hover:text-brand-primary transition-colors ml-12 -mt-1 block"
-          >
-            From the creators of AffiliateMarketingForSuccess.com
-          </a>
-        </div>
-        <div className="flex items-center space-x-4">
-          {/* Performance Badge */}
-          {appState === AppState.Results && fetchStats && (
-            <div className="hidden lg:flex items-center gap-3 px-4 py-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-xs">
-              <ZapIcon className="w-4 h-4 text-emerald-500" />
-              <span className="text-emerald-600 font-bold">
-                {fetchStats.cachedHit ? 'Instant Load' : `${fetchStats.elapsedMs}ms`}
-              </span>
-              {fetchStats.cachedHit && (
-                <span className="px-2 py-0.5 bg-emerald-500/20 rounded-full text-[10px] font-bold">CACHED</span>
-              )}
-            </div>
-          )}
-
-          {/* Quick Stats Badge */}
-          {appState === AppState.Results && (
-            <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-surface-muted rounded-xl border border-border text-xs">
-              <span className="text-amber-500 font-bold">{appStats.postsWithoutFeatured} missing</span>
-              <span className="text-red-500 font-bold">{appStats.postsWithZeroImages} empty</span>
-              <span className="text-emerald-500 font-bold">{appStats.postsProcessed} done</span>
-            </div>
-          )}
-          
-          <div className="flex items-center space-x-2 text-sm text-muted">
-            <span>Powered by</span>
-            <GeminiIcon className="h-6 w-6" />
-          </div>
-          
-          <button
-            onClick={() => setShowShortcuts(true)}
-            className="p-2 rounded-full bg-surface-muted hover:bg-border text-text-secondary hover:text-text-primary transition-colors"
-            aria-label="Keyboard shortcuts"
-            title="Keyboard shortcuts (Shift+?)"
-          >
-            <KeyboardIcon className="h-5 w-5" />
-          </button>
-          
-          <button 
-            onClick={toggleTheme} 
-            className="p-2 rounded-full bg-surface-muted hover:bg-border text-text-secondary hover:text-text-primary transition-colors"
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          >
-            {theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
-          </button>
-        </div>
-      </header>
-
-      <main className="w-full max-w-7xl mx-auto flex-grow">
-        {content}
-      </main>
-
-      <footer className="w-full max-w-7xl mx-auto mt-12 py-8 border-t border-border text-center text-sm text-muted">
-        <div className="flex flex-col items-center gap-4">
-          <a href="https://affiliatemarketingforsuccess.com" target="_blank" rel="noopener noreferrer">
-            <img 
-              src="https://affiliatemarketingforsuccess.com/wp-content/uploads/2023/03/cropped-Affiliate-Marketing-for-Success-Logo-Edited.png?lm=6666FEE0" 
-              alt="Affiliate Marketing for Success Logo" 
-              className="h-16 w-auto mb-2 hover:opacity-80 transition-opacity"
-              loading="lazy"
-            />
-          </a>
-          <p>
-            Created by Alexios Papaioannou, Owner of{' '}
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Top gradient line */}
+      <div className="h-0.5 bg-gradient-to-r from-brand-primary via-brand-secondary to-brand-accent" />
+      
+      <header className="w-full border-b border-border bg-surface/80 backdrop-blur-xl sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto flex justify-between items-center px-6 py-3">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={handleReset}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
+              <div className="w-9 h-9 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-xl flex items-center justify-center shadow-sm">
+                <AppIcon className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-lg font-bold text-text-primary tracking-tight hidden sm:block">AI Image Engine</span>
+            </button>
             <a 
               href="https://affiliatemarketingforsuccess.com" 
               target="_blank" 
               rel="noopener noreferrer" 
-              className="font-semibold text-text-secondary hover:text-brand-primary transition-colors"
+              className="text-[10px] text-muted hover:text-brand-primary transition-colors hidden lg:block"
             >
-              affiliatemarketingforsuccess.com
+              by AffiliateMarketingForSuccess.com
             </a>
-          </p>
-          <p className="text-xs text-muted">
-            Press <kbd className="px-1.5 py-0.5 bg-surface-muted rounded border border-border text-[10px]">Shift</kbd> + <kbd className="px-1.5 py-0.5 bg-surface-muted rounded border border-border text-[10px]">?</kbd> for keyboard shortcuts
-          </p>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Performance Badge */}
+            {appState === AppState.Results && fetchStats && (
+              <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-success/8 rounded-lg border border-success/15 text-xs">
+                <ZapIcon className="w-3.5 h-3.5 text-success" />
+                <span className="text-success font-semibold">
+                  {fetchStats.cachedHit ? 'Cached' : `${fetchStats.elapsedMs}ms`}
+                </span>
+              </div>
+            )}
+
+            {/* Quick Stats Badge */}
+            {appState === AppState.Results && (
+              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-surface-muted rounded-lg border border-border text-[11px] font-medium">
+                <span className="text-warning">{appStats.postsWithoutFeatured} missing</span>
+                <span className="text-muted">•</span>
+                <span className="text-danger">{appStats.postsWithZeroImages} empty</span>
+                <span className="text-muted">•</span>
+                <span className="text-success">{appStats.postsProcessed} done</span>
+              </div>
+            )}
+            
+            <div className="flex items-center gap-1.5 text-xs text-muted">
+              <span className="hidden sm:inline">Powered by</span>
+              <GeminiIcon className="h-5 w-5" />
+            </div>
+            
+            <button
+              onClick={() => setShowShortcuts(true)}
+              className="p-2 rounded-xl bg-surface-muted/60 hover:bg-surface-muted text-text-muted hover:text-text-primary transition-colors"
+              aria-label="Keyboard shortcuts"
+              title="Shift+?"
+            >
+              <KeyboardIcon className="h-4 w-4" />
+            </button>
+            
+            <button 
+              onClick={toggleTheme} 
+              className="p-2 rounded-xl bg-surface-muted/60 hover:bg-surface-muted text-text-muted hover:text-text-primary transition-colors"
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="w-full max-w-7xl mx-auto flex-grow px-4 sm:px-6 lg:px-8 py-8">
+        {content}
+      </main>
+
+      <footer className="w-full border-t border-border bg-surface/50 mt-auto">
+        <div className="max-w-7xl mx-auto py-8 px-6 text-center text-sm text-muted">
+          <div className="flex flex-col items-center gap-3">
+            <a href="https://affiliatemarketingforsuccess.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+              <img 
+                src="https://affiliatemarketingforsuccess.com/wp-content/uploads/2023/03/cropped-Affiliate-Marketing-for-Success-Logo-Edited.png?lm=6666FEE0" 
+                alt="Affiliate Marketing for Success Logo" 
+                className="h-12 w-auto mb-1"
+                loading="lazy"
+              />
+            </a>
+            <p className="text-xs">
+              Created by Alexios Papaioannou •{' '}
+              <a href="https://affiliatemarketingforsuccess.com" target="_blank" rel="noopener noreferrer" className="font-medium hover:text-brand-primary transition-colors">
+                affiliatemarketingforsuccess.com
+              </a>
+            </p>
+            <p className="text-[10px] text-muted">
+              <kbd className="px-1.5 py-0.5 bg-surface-muted rounded-md border border-border text-[9px] font-mono">Shift</kbd> + <kbd className="px-1.5 py-0.5 bg-surface-muted rounded-md border border-border text-[9px] font-mono">?</kbd> for shortcuts
+            </p>
+          </div>
         </div>
       </footer>
 
