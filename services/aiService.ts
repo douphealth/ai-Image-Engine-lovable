@@ -24,10 +24,15 @@ const TEXT_MODEL = TEXT_MODELS[0];
 const IMAGE_MODEL = 'gemini-2.0-flash-exp';
 // ============================================================
 
+const sanitizeApiKey = (key: string): string => {
+  // Remove invisible Unicode chars, BOM, zero-width spaces, etc.
+  return key.replace(/[^\x20-\x7E]/g, '').trim();
+};
+
 const getGeminiClient = (apiKey?: string) => {
   const key = apiKey || process.env.API_KEY;
   if (!key) throw new Error("API Key Configuration Missing");
-  return new GoogleGenAI({ apiKey: key });
+  return new GoogleGenAI({ apiKey: sanitizeApiKey(key) });
 };
 
 const stripHtml = (html: string): string => {
