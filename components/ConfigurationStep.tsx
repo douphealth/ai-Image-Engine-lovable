@@ -193,136 +193,141 @@ const ConfigurationStep: React.FC<Props> = ({ onConfigure, initialConfig }) => {
   }, [wpUrl, wpUser, wpPass, analysisProvider, analysisModel, getApiKeyForProvider]);
 
   return (
-    <div className="bg-surface rounded-2xl shadow-2xl p-6 sm:p-10 max-w-5xl mx-auto animate-fade-in border border-border">
-      <div className="flex items-center gap-4 mb-8">
-        <div className="p-3 bg-brand-primary/10 rounded-xl">
-          <ZapIcon className="w-8 h-8 text-brand-primary" />
+    <div className="bg-surface rounded-3xl shadow-2xl shadow-brand-primary/5 p-8 sm:p-12 max-w-5xl mx-auto animate-fade-in border border-border relative overflow-hidden">
+      {/* Decorative accent */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-primary via-brand-secondary to-brand-accent" />
+      
+      <div className="flex items-center gap-5 mb-10">
+        <div className="p-3.5 bg-gradient-to-br from-brand-primary/15 to-brand-secondary/10 rounded-2xl border border-brand-primary/10">
+          <ZapIcon className="w-7 h-7 text-brand-primary" />
         </div>
         <div>
-          <h2 className="text-3xl font-black text-text-primary tracking-tighter uppercase">Command Config</h2>
-          <p className="text-text-secondary font-medium italic opacity-70 tracking-tight">Sync WordPress assets with AI synthesis core</p>
+          <h2 className="text-3xl font-extrabold text-text-primary tracking-tight">Command Config</h2>
+          <p className="text-sm text-text-muted mt-0.5">Connect your WordPress site and configure AI synthesis</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-10">
-        <fieldset className="grid grid-cols-1 md:grid-cols-3 gap-6 p-8 bg-surface-muted/30 rounded-2xl border border-border">
-          <legend className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-primary bg-surface px-4 py-1.5 rounded-full border border-border">
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <fieldset className="grid grid-cols-1 md:grid-cols-3 gap-5 p-7 bg-surface-muted/40 rounded-2xl border border-border">
+          <legend className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand-primary bg-surface px-4 py-1.5 rounded-full border border-border shadow-sm">
             WordPress Target
           </legend>
 
           <div>
-            <label className="block text-[10px] font-black text-muted uppercase tracking-widest mb-2">Endpoint URL</label>
-            <input type="url" value={wpUrl} onChange={(e) => setWpUrl(e.target.value)} placeholder="https://site.com" required className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-text-primary focus:ring-2 focus:ring-brand-primary outline-none transition-all" />
+            <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2">Endpoint URL</label>
+            <input type="url" value={wpUrl} onChange={(e) => setWpUrl(e.target.value)} placeholder="https://site.com" required className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-text-primary input-premium outline-none" />
           </div>
 
           <div>
-            <label className="block text-[10px] font-black text-muted uppercase tracking-widest mb-2">Username</label>
-            <input type="text" value={wpUser} onChange={(e) => setWpUser(e.target.value)} placeholder="admin" required className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-text-primary focus:ring-2 focus:ring-brand-primary outline-none transition-all" />
+            <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2">Username</label>
+            <input type="text" value={wpUser} onChange={(e) => setWpUser(e.target.value)} placeholder="admin" required className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-text-primary input-premium outline-none" />
           </div>
 
           <div className="relative">
-            <label className="block text-[10px] font-black text-muted uppercase tracking-widest mb-2">App Password</label>
+            <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2">App Password</label>
             <div className="relative">
-              <input type={showPass ? 'text' : 'password'} value={wpPass} onChange={(e) => setWpPass(e.target.value)} placeholder="xxxx xxxx xxxx xxxx" required className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-text-primary focus:ring-2 focus:ring-brand-primary outline-none transition-all pr-12" />
-              <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted">
-                {showPass ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+              <input type={showPass ? 'text' : 'password'} value={wpPass} onChange={(e) => setWpPass(e.target.value)} placeholder="xxxx xxxx xxxx xxxx" required className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-text-primary input-premium outline-none pr-12" />
+              <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-text-primary transition-colors">
+                {showPass ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
               </button>
             </div>
           </div>
         </fieldset>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-                <fieldset className="p-8 bg-surface-muted/30 rounded-2xl border border-border">
-                    <legend className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-primary bg-surface px-4 py-1.5 rounded-full border border-border">Synthesis Configuration</legend>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <fieldset className="p-7 bg-surface-muted/40 rounded-2xl border border-border">
+                    <legend className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand-primary bg-surface px-4 py-1.5 rounded-full border border-border shadow-sm">Synthesis Configuration</legend>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
-                            <label className="block text-[10px] font-black text-muted uppercase tracking-widest mb-2">Image Engine</label>
-                            <select value={imageProvider} onChange={(e) => setImageProvider(e.target.value as AIProvider)} className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-text-primary outline-none">
+                            <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2">Image Engine</label>
+                            <select value={imageProvider} onChange={(e) => setImageProvider(e.target.value as AIProvider)} className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-text-primary outline-none input-premium">
                                 {Object.values(AIProvider).map(p => <option key={p} value={p}>{p}</option>)}
                             </select>
                             {imageProvider === AIProvider.Pollinations && (
-                              <p className="text-[10px] text-emerald-500 mt-2">✓ Free, no API key required</p>
+                              <p className="text-[10px] text-success mt-2 font-medium">✓ Free, no API key required</p>
                             )}
                             {imageProvider === AIProvider.Gemini && (
-                              <p className="text-[10px] text-amber-500 mt-2">⚠ Will use Pollinations (Gemini image gen unavailable)</p>
+                              <p className="text-[10px] text-warning mt-2 font-medium">⚠ Will use Pollinations (Gemini image gen unavailable)</p>
                             )}
                         </div>
                         <div>
-                            <label className="block text-[10px] font-black text-muted uppercase tracking-widest mb-2">Text Analysis</label>
-                            <select value={analysisProvider} onChange={(e) => setAnalysisProvider(e.target.value as TextAIProvider)} className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-text-primary outline-none">
+                            <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2">Text Analysis</label>
+                            <select value={analysisProvider} onChange={(e) => setAnalysisProvider(e.target.value as TextAIProvider)} className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-text-primary outline-none input-premium">
                                 {Object.values(TextAIProvider).map(p => <option key={p} value={p}>{p}</option>)}
                             </select>
                             {analysisProvider === TextAIProvider.None && (
-                              <p className="text-[10px] text-emerald-500 mt-2">✓ No API key needed — briefs generated from post titles</p>
+                              <p className="text-[10px] text-success mt-2 font-medium">✓ No API key needed — briefs generated from post titles</p>
                             )}
                         </div>
                     </div>
                 </fieldset>
 
-                <fieldset className="p-8 bg-surface-muted/30 rounded-2xl border border-border">
-                    <legend className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-primary bg-surface px-4 py-1.5 rounded-full border border-border">Asset Parameters</legend>
+                <fieldset className="p-7 bg-surface-muted/40 rounded-2xl border border-border">
+                    <legend className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand-primary bg-surface px-4 py-1.5 rounded-full border border-border shadow-sm">Asset Parameters</legend>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
-                            <label className="block text-[10px] font-black text-muted uppercase tracking-widest mb-2">Format</label>
-                            <select value={imageFormat} onChange={(e) => setImageFormat(e.target.value as ImageFormat)} className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-text-primary">
+                            <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2">Format</label>
+                            <select value={imageFormat} onChange={(e) => setImageFormat(e.target.value as ImageFormat)} className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-text-primary input-premium">
                                 {Object.entries(ImageFormat).map(([k, v]) => <option key={k} value={v}>{k}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-[10px] font-black text-muted uppercase tracking-widest mb-2">Aspect Ratio</label>
-                            <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value as AspectRatio)} className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-text-primary">
+                            <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2">Aspect Ratio</label>
+                            <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value as AspectRatio)} className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-text-primary input-premium">
                                 {Object.entries(AspectRatio).map(([k, v]) => <option key={k} value={v}>{k}</option>)}
                             </select>
                         </div>
                         <div className="col-span-2">
-                             <label className="block text-[10px] font-black text-muted uppercase tracking-widest mb-2">Style Preset</label>
-                             <input type="text" value={style} onChange={(e) => setStyle(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2 text-xs text-text-primary" />
+                             <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2">Style Preset</label>
+                             <input type="text" value={style} onChange={(e) => setStyle(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-xs text-text-primary input-premium" />
                         </div>
                     </div>
                 </fieldset>
 
                 {/* SEO Context */}
-                <fieldset className="p-8 bg-surface-muted/30 rounded-2xl border border-border">
-                    <legend className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-primary bg-surface px-4 py-1.5 rounded-full border border-border">SEO Context</legend>
+                <fieldset className="p-7 bg-surface-muted/40 rounded-2xl border border-border">
+                    <legend className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand-primary bg-surface px-4 py-1.5 rounded-full border border-border shadow-sm">SEO Context</legend>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <label className="block text-[10px] font-black text-muted uppercase tracking-widest mb-2 flex items-center gap-1"><GlobeIcon className="w-3 h-3"/> Location</label>
-                            <input type="text" value={targetLocation} onChange={(e) => setTargetLocation(e.target.value)} placeholder="Global" className="w-full bg-background border border-border rounded-xl px-4 py-2 text-xs text-text-primary" />
+                            <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1"><GlobeIcon className="w-3 h-3"/> Location</label>
+                            <input type="text" value={targetLocation} onChange={(e) => setTargetLocation(e.target.value)} placeholder="Global" className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-xs text-text-primary input-premium" />
                         </div>
                         <div>
-                            <label className="block text-[10px] font-black text-muted uppercase tracking-widest mb-2 flex items-center gap-1"><TargetIcon className="w-3 h-3"/> Keywords</label>
-                            <input type="text" value={primaryKeywords} onChange={(e) => setPrimaryKeywords(e.target.value)} placeholder="marketing, SEO" className="w-full bg-background border border-border rounded-xl px-4 py-2 text-xs text-text-primary" />
+                            <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1"><TargetIcon className="w-3 h-3"/> Keywords</label>
+                            <input type="text" value={primaryKeywords} onChange={(e) => setPrimaryKeywords(e.target.value)} placeholder="marketing, SEO" className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-xs text-text-primary input-premium" />
                         </div>
                         <div>
-                            <label className="block text-[10px] font-black text-muted uppercase tracking-widest mb-2 flex items-center gap-1"><UserIcon className="w-3 h-3"/> Brand Voice</label>
-                            <input type="text" value={brandVoice} onChange={(e) => setBrandVoice(e.target.value)} placeholder="Professional" className="w-full bg-background border border-border rounded-xl px-4 py-2 text-xs text-text-primary" />
+                            <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1"><UserIcon className="w-3 h-3"/> Brand Voice</label>
+                            <input type="text" value={brandVoice} onChange={(e) => setBrandVoice(e.target.value)} placeholder="Professional" className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-xs text-text-primary input-premium" />
                         </div>
                     </div>
                 </fieldset>
             </div>
 
-            <fieldset className="p-8 bg-surface-muted/30 rounded-2xl border border-border flex flex-col">
-                <legend className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-primary bg-surface px-4 py-1.5 rounded-full border border-border">API Access</legend>
+            <fieldset className="p-7 bg-surface-muted/40 rounded-2xl border border-border flex flex-col">
+                <legend className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand-primary bg-surface px-4 py-1.5 rounded-full border border-border shadow-sm">API Access</legend>
                 <div className="space-y-4 flex-grow">
                     {requiredKeyHolders.length === 0 ? (
                       <div className="text-center py-8">
-                        <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3"/>
+                        <div className="w-14 h-14 bg-success/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          <CheckCircle2 className="w-7 h-7 text-success"/>
+                        </div>
                         <p className="text-sm font-bold text-text-primary">No API Keys Required!</p>
                         <p className="text-xs text-muted mt-1">Pollinations.ai is free to use</p>
                       </div>
                     ) : (
                       requiredKeyHolders.map(holder => (
                         <div key={holder}>
-                            <label className="block text-[10px] font-black text-muted uppercase tracking-widest mb-2 flex justify-between">
-                                {holder} {testResults[holder]?.status === 'success' && <CheckCircle2 className="w-3 h-3 text-emerald-500"/>}
+                            <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2 flex justify-between">
+                                {holder} {testResults[holder]?.status === 'success' && <CheckCircle2 className="w-3.5 h-3.5 text-success"/>}
                             </label>
-                            <input type="password" value={apiKeys[holder] || ''} onChange={(e) => setApiKeys(p => ({ ...p, [holder]: e.target.value }))} placeholder="API Key" required className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-xs text-text-primary focus:ring-2 focus:ring-brand-primary outline-none" />
+                            <input type="password" value={apiKeys[holder] || ''} onChange={(e) => setApiKeys(p => ({ ...p, [holder]: e.target.value }))} placeholder="API Key" required className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-xs text-text-primary input-premium outline-none font-mono" />
                         </div>
                       ))
                     )}
                 </div>
-                <button type="button" onClick={handleTestConnections} disabled={isTesting || !wpUrl} className="mt-6 w-full flex items-center justify-center gap-2 font-black uppercase text-[10px] tracking-widest py-3 rounded-xl border border-border bg-surface text-text-secondary hover:text-brand-primary transition-all disabled:opacity-50">
+                <button type="button" onClick={handleTestConnections} disabled={isTesting || !wpUrl} className="mt-6 w-full flex items-center justify-center gap-2 font-bold uppercase text-[11px] tracking-wider py-3 rounded-xl border border-border bg-surface text-text-secondary hover:text-brand-primary hover:border-brand-primary/40 transition-all disabled:opacity-50">
                     {isTesting ? <Loader className="w-4 h-4 animate-spin"/> : <ZapIcon className="w-4 h-4"/>}
                     Test Connections
                 </button>
@@ -330,10 +335,9 @@ const ConfigurationStep: React.FC<Props> = ({ onConfigure, initialConfig }) => {
                 {/* Test Results */}
                 {Object.keys(testResults).length > 0 && (
                   <div className="mt-4 space-y-2">
-                    {/* FIX: Cast result to any to bypass unknown type inference in map callback */}
                     {(Object.entries(testResults) as [string, any][]).map(([key, result]) => (
-                      <div key={key} className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${result.status === 'success' ? 'bg-emerald-500/10 text-emerald-600' : result.status === 'error' ? 'bg-red-500/10 text-red-500' : 'bg-brand-primary/10 text-brand-primary'}`}>
-                        {result.status === 'success' ? <CheckCircle2 className="w-3 h-3"/> : result.status === 'error' ? <AlertTriangle className="w-3 h-3"/> : <Loader className="w-3 h-3 animate-spin"/>}
+                      <div key={key} className={`flex items-center gap-2 text-xs px-3 py-2.5 rounded-xl ${result.status === 'success' ? 'bg-success/10 text-success' : result.status === 'error' ? 'bg-danger/10 text-danger' : 'bg-brand-primary/10 text-brand-primary'}`}>
+                        {result.status === 'success' ? <CheckCircle2 className="w-3.5 h-3.5"/> : result.status === 'error' ? <AlertTriangle className="w-3.5 h-3.5"/> : <Loader className="w-3.5 h-3.5 animate-spin"/>}
                         <span className="font-semibold">{key}:</span>
                         <span className="truncate">{result.message}</span>
                       </div>
@@ -343,10 +347,13 @@ const ConfigurationStep: React.FC<Props> = ({ onConfigure, initialConfig }) => {
             </fieldset>
         </div>
 
-        <div className="flex justify-center pt-8">
-          <button type="submit" disabled={!isFormValid} className="group relative flex items-center justify-center gap-4 font-black uppercase text-lg tracking-widest py-6 px-20 rounded-3xl text-white bg-gradient-to-br from-brand-primary to-brand-secondary shadow-2xl hover:shadow-brand-primary/40 hover:-translate-y-1.5 transition-all duration-500 disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed">
-            <SparklesIcon className="w-8 h-8 group-hover:rotate-12 transition-transform" />
+        <div className="flex justify-center pt-10">
+          <button type="submit" disabled={!isFormValid} className="group relative flex items-center justify-center gap-3 font-bold text-base tracking-wide py-5 px-16 rounded-2xl text-white bg-gradient-to-r from-brand-primary to-brand-secondary shadow-xl shadow-brand-primary/20 hover:shadow-2xl hover:-translate-y-1 active:translate-y-0 transition-all duration-300 disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed pulse-glow">
+            <SparklesIcon className="w-6 h-6 group-hover:rotate-12 transition-transform" />
             <span>Engage Crawler</span>
+            <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
           </button>
         </div>
       </form>
