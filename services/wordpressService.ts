@@ -21,7 +21,7 @@ import { APIError, AuthenticationError } from './errors';
 
 const createAuthHeader = (username: string, appPassword?: string): string | null => {
   if (!username || !appPassword) return null;
-  return `Basic ${btoa(`${username}:${appPassword}`)}`;
+  return `Basic ${btoa(unescape(encodeURIComponent(`${username}:${appPassword}`)))}`;
 };
 
 const buildApiUrl = (baseUrl: string, endpoint: string): string => {

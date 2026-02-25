@@ -101,6 +101,7 @@ const ResultsStep: React.FC<Props> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(800);
+  const [containerWidth, setContainerWidth] = useState(1200);
   const [showScrollTop, setShowScrollTop] = useState(false);
   
   // Processing state
@@ -133,14 +134,13 @@ const ResultsStep: React.FC<Props> = ({
   const columnsCount = useMemo(() => {
     if (viewMode === 'list') return 1;
     if (viewMode === 'compact') return 6;
-    if (typeof window === 'undefined') return 4;
-    const width = containerRef.current?.clientWidth || window.innerWidth;
+    const width = containerWidth;
     if (width >= 1536) return 5;
     if (width >= 1280) return 4;
     if (width >= 1024) return 3;
     if (width >= 640) return 2;
     return 1;
-  }, [containerHeight, viewMode]);
+  }, [containerWidth, viewMode]);
 
   const effectiveCardHeight = viewMode === 'list' ? 120 : viewMode === 'compact' ? 280 : CARD_HEIGHT;
   const rowHeight = effectiveCardHeight + CARD_GAP;
@@ -184,11 +184,13 @@ const ResultsStep: React.FC<Props> = ({
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setContainerHeight(entry.contentRect.height);
+        setContainerWidth(entry.contentRect.width);
       }
     });
 
     resizeObserver.observe(container);
     setContainerHeight(container.clientHeight);
+    setContainerWidth(container.clientWidth);
 
     return () => resizeObserver.disconnect();
   }, []);
