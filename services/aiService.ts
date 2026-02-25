@@ -14,19 +14,21 @@ import {
 // ============================================================
 // SOTA MODEL CONFIGURATION - PRODUCTION TIER
 // ============================================================
-// Model priority: try newer models first, fall back to ones with free quota
 const TEXT_MODELS = [
-  'gemini-2.5-flash',      // Newest, best if quota available
-  'gemini-2.0-flash',      // Good but free tier often exhausted
-  'gemini-1.5-flash',      // Most reliable free tier model
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
 ];
 const TEXT_MODEL = TEXT_MODELS[0];
 const IMAGE_MODEL = 'gemini-2.0-flash-exp';
 // ============================================================
 
 const sanitizeApiKey = (key: string): string => {
-  // Remove invisible Unicode chars, BOM, zero-width spaces, etc.
   return key.replace(/[^\x20-\x7E]/g, '').trim();
+};
+
+const isHeuristicMode = (config: AnalysisAIConfig): boolean => {
+  return !config.apiKey && !process.env.API_KEY;
 };
 
 const getGeminiClient = (apiKey?: string) => {
@@ -65,12 +67,18 @@ const fetchImageAsBase64 = async (imageUrl: string, signal?: AbortSignal): Promi
   });
 };
 
+// ============================================================
+// TEXT GENERATION
+// ============================================================
+
 export const generateText = async (
   config: AnalysisAIConfig, 
   prompt: string, 
   maxTokens?: number, 
   signal?: AbortSignal
 ): Promise<string> => {
+  if (isHeuristicMode(config)) return "";
+  
   const ai = getGeminiClient(config.apiKey);
   const modelsToTry = config.model ? [config.model, ...TEXT_MODELS] : TEXT_MODELS;
   
@@ -95,6 +103,10 @@ export const generateText = async (
   throw new Error("All Gemini models exhausted");
 };
 
+// ============================================================
+// IMAGE BRIEF GENERATION
+// ============================================================
+
 export const generateImageBrief = async (
   post: WordPressPost,
   config: AnalysisAIConfig,
@@ -103,6 +115,17 @@ export const generateImageBrief = async (
 ): Promise<ImageBrief> => {
   const title = stripHtml(post.title.rendered);
   const excerpt = stripHtml(post.excerpt.rendered).slice(0, 500);
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  
+  const heuristicBrief = (): ImageBrief => ({
+    postId: post.id,
+    brief: `A professional, high-quality editorial photo representing "${title}". ${seo.brandVoice || 'Professional'} style, cinematic lighting, 4k resolution.`,
+    altText: title,
+    caption: title,
+    filenameSlug: slug,
+  });
+
+  if (isHeuristicMode(config)) return heuristicBrief();
   
   const prompt = `Role: World-Class Art Director. 
 Task: Create a visual brief for a blog post.
@@ -119,36 +142,27 @@ JSON Output Required:
   "filenameSlug": "kebab-case-filename" 
 }`;
 
-  const ai = getGeminiClient(config.apiKey);
-  
   try {
+    const ai = getGeminiClient(config.apiKey);
     const response = await ai.models.generateContent({
       model: config.model || TEXT_MODEL,
       contents: prompt,
-      config: { 
-        responseMimeType: "application/json",
-      },
+      config: { responseMimeType: "application/json" },
     });
     
     const jsonStr = extractJson(response.text || "{}");
     const data = JSON.parse(jsonStr || "{}");
-    
-    // Validation fallback
     if (!data.brief) throw new Error("Invalid JSON response from AI");
-    
     return { postId: post.id, ...data };
   } catch (error) {
-    // Fallback if JSON mode fails
     console.error("Brief generation failed, using heuristic fallback");
-    return {
-      postId: post.id,
-      brief: `A professional photo representing ${title}, high quality, 4k`,
-      altText: title,
-      caption: title,
-      filenameSlug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-    };
+    return heuristicBrief();
   }
 };
+
+// ============================================================
+// IMAGE GENERATION
+// ============================================================
 
 export const generateImage = async (
   imageConfig: ImageAIConfig, 
@@ -156,7 +170,6 @@ export const generateImage = async (
   settings: ImageSettings, 
   signal?: AbortSignal
 ): Promise<string> => {
-  // 1. Try Gemini Image Generation (If selected and available)
   if (imageConfig.provider === AIProvider.Gemini) {
     try {
       const ai = getGeminiClient(imageConfig.apiKey);
@@ -175,21 +188,23 @@ export const generateImage = async (
       }
       throw new Error("No image data in Gemini response");
     } catch (error) {
-      console.warn("Gemini Image Gen failed, falling back to Pollinations engine seamlessly.", error);
-      // Fall through to Pollinations
+      console.warn("Gemini Image Gen failed, falling back to Pollinations.", error);
     }
   }
   
-  // 2. Pollinations (Robust Fallback & Default)
+  // Pollinations fallback (always works, free)
   const dimensions = { "16:9": { w: 1280, h: 720 }, "1:1": { w: 1024, h: 1024 }, "9:16": { w: 720, h: 1280 } };
   const d = dimensions[settings.aspectRatio] || dimensions["16:9"];
-  // Random seed ensures no cached/stale images
   const seed = Math.floor(Math.random() * 1000000);
-  const safePrompt = encodeURIComponent(prompt.slice(0, 500)); // Truncate to avoid URL limits
+  const safePrompt = encodeURIComponent(prompt.slice(0, 500));
   const url = `https://image.pollinations.ai/prompt/${safePrompt}?width=${d.w}&height=${d.h}&nologo=true&seed=${seed}&model=flux`;
   
   return fetchImageAsBase64(url, signal);
 };
+
+// ============================================================
+// AEO ANALYSIS
+// ============================================================
 
 export const analyzeAEO = async (
   config: AnalysisAIConfig, 
@@ -197,14 +212,23 @@ export const analyzeAEO = async (
   seo: SEOContext, 
   signal?: AbortSignal
 ): Promise<AEOAnalysis> => {
-  const ai = getGeminiClient(config.apiKey);
   const title = stripHtml(post.title.rendered);
-  
-  const prompt = `Analyze AEO (Answer Engine Optimization) for: "${title}".
-  Keywords: ${seo.primaryKeywords}
-  Return JSON: { "score": number, "suggestions": string[], "qaPairs": [{"question":string, "answer":string}], "serpSnippet": string }`;
+  const heuristicResult: AEOAnalysis = { 
+    score: 50, 
+    suggestions: ["Ensure content directly answers user queries", "Add structured data", "Use FAQ schema markup"], 
+    qaPairs: [], 
+    serpSnippet: title,
+    sources: [],
+  };
+
+  if (isHeuristicMode(config)) return heuristicResult;
 
   try {
+    const ai = getGeminiClient(config.apiKey);
+    const prompt = `Analyze AEO (Answer Engine Optimization) for: "${title}".
+    Keywords: ${seo.primaryKeywords}
+    Return JSON: { "score": number, "suggestions": string[], "qaPairs": [{"question":string, "answer":string}], "serpSnippet": string }`;
+
     const response = await ai.models.generateContent({
       model: config.model || TEXT_MODEL,
       contents: prompt,
@@ -214,16 +238,19 @@ export const analyzeAEO = async (
     const result = JSON.parse(extractJson(response.text || "{}") || "{}");
     return { ...result, sources: [] };
   } catch (e) {
-    return { 
-      score: 50, 
-      suggestions: ["Ensure content directly answers user queries", "Add structured data"], 
-      qaPairs: [], 
-      serpSnippet: title 
-    };
+    return heuristicResult;
   }
 };
 
+// ============================================================
+// CONNECTION TESTS
+// ============================================================
+
 export const testTextAIProvider = async (config: AnalysisAIConfig) => {
+  if (isHeuristicMode(config)) {
+    return { success: true, message: '✅ Heuristic mode — no API key needed. Briefs auto-generated from post titles.' };
+  }
+
   const ai = getGeminiClient(config.apiKey);
   const modelsToTry = config.model ? [config.model, ...TEXT_MODELS] : TEXT_MODELS;
   
@@ -243,10 +270,10 @@ export const testTextAIProvider = async (config: AnalysisAIConfig) => {
         continue;
       }
       if (msg.includes('API_KEY_INVALID') || msg.includes('401')) {
-        return { success: false, message: '🔑 Invalid API key. Please check your Gemini API key.' };
+        return { success: false, message: '🔑 Invalid API key.' };
       }
       if (isQuota) {
-        return { success: false, message: '⚠️ All Gemini models quota exhausted. Upgrade to a paid plan at ai.google.dev.' };
+        return { success: false, message: '⚠️ Quota exhausted. Switch to "None (Heuristic)" or upgrade plan.' };
       }
       return { success: false, message: msg.slice(0, 200) };
     }
@@ -259,7 +286,6 @@ export const testImageAIProvider = async (config: ImageAIConfig) => {
   
   try {
     const ai = getGeminiClient(config.apiKey);
-    // Test capability
     await ai.models.generateContent({ 
         model: TEXT_MODEL, 
         contents: 'ping',
@@ -271,7 +297,10 @@ export const testImageAIProvider = async (config: ImageAIConfig) => {
   }
 };
 
-// ... exports
+// ============================================================
+// EXPORTS
+// ============================================================
+
 export const generateImageBriefsAndAltsBatch = async (posts: WordPressPost[], config: any, seo: any) => Promise.all(posts.map(p => generateImageBrief(p, config, seo)));
 export const analyzeImagePlacement = async () => [];
 export const analyzeImageWithVision = async (apiKey: string, imageUrl: string, _signal?: AbortSignal) => ({ score: 8, altText: "Analyzed Image", brief: "Optimized Brief" });
