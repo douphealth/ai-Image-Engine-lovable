@@ -462,11 +462,38 @@ const App: React.FC = () => {
     };
     if (authHeader) headers['Authorization'] = authHeader;
 
-    // FIXED: Don't use context=edit in probe - use same params as main fetch
-    const probeResponse = await fetch(
-      `${baseUrl}/wp-json/wp/v2/posts?per_page=1&page=1&status=publish`,
-      { headers, signal: abortController.signal }
-    );
+    // CORS-aware fetch helper - tries direct first, then CORS proxies
+    const CORS_PROXIES = [
+      (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+      (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    ];
+    let useProxy: ((url: string) => string) | null = null;
+
+    const corsFetch = async (url: string, opts: RequestInit): Promise<Response> => {
+      if (useProxy) {
+        return fetch(useProxy(url), opts);
+      }
+      try {
+        const resp = await fetch(url, opts);
+        return resp;
+      } catch (directError) {
+        // CORS error - try proxies
+        for (const proxyFn of CORS_PROXIES) {
+          try {
+            const resp = await fetch(proxyFn(url), opts);
+            if (resp.ok) {
+              useProxy = proxyFn; // Remember working proxy
+              console.log('[UltraFetch] Using CORS proxy for subsequent requests');
+              return resp;
+            }
+          } catch { continue; }
+        }
+        throw directError;
+      }
+    };
+
+    const probeUrl = `${baseUrl}/wp-json/wp/v2/posts?per_page=1&page=1&status=publish`;
+    const probeResponse = await corsFetch(probeUrl, { headers, signal: abortController.signal });
 
     if (!probeResponse.ok) {
       const errorText = await probeResponse.text().catch(() => '');
@@ -489,7 +516,7 @@ const App: React.FC = () => {
     
     // Test if server accepts per_page=100
     try {
-      const testResponse = await fetch(
+      const testResponse = await corsFetch(
         `${baseUrl}/wp-json/wp/v2/posts?per_page=100&page=1&status=publish`,
         { headers, signal: abortController.signal }
       );
@@ -558,7 +585,7 @@ const App: React.FC = () => {
         try {
           // FIXED: Don't use context=edit - it requires special permissions
           // Just use _embed for featured media
-          const response = await fetch(
+          const response = await corsFetch(
             `${baseUrl}/wp-json/wp/v2/posts?per_page=${effectiveBatchSize}&page=${page}&status=publish&_embed=wp:featuredmedia`,
             { headers, signal: controller.signal }
           );
@@ -919,7 +946,7 @@ const App: React.FC = () => {
       console.error("Crawling failed:", error);
       const message = getErrorMessage(error);
       setCrawlError(message);
-      setAppState(AppState.Configuration);
+      // Stay on Crawling screen so user sees the error with a "Back to Configuration" button
     }
   }, [persistence, ultraFetchAllPosts, analyzePostsImages]);
 
