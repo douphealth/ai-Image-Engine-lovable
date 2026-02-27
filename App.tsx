@@ -131,8 +131,12 @@ class PostCache {
           });
         };
         
-        tx.onerror = () => resolve(null);
-      } catch {
+        tx.onerror = () => {
+          console.error('PostCache getCachedPosts transaction error:', tx.error);
+          resolve(null);
+        };
+      } catch (e) {
+        console.error('PostCache getCachedPosts error:', e);
         resolve(null);
       }
     });
@@ -185,6 +189,7 @@ class PostCache {
         const metaStore = tx.objectStore(this.metaStore);
         
         if (siteUrl) {
+          // Clear only posts for a specific site using cursor (no better way with index)
           const index = store.index('siteUrl');
           const request = index.openCursor(IDBKeyRange.only(siteUrl));
           request.onsuccess = () => {
@@ -196,13 +201,18 @@ class PostCache {
           };
           metaStore.delete(siteUrl);
         } else {
+          // FIXED: Use IDBObjectStore.clear() for full wipe instead of cursor iteration
           store.clear();
           metaStore.clear();
         }
         
         tx.oncomplete = () => resolve();
-        tx.onerror = () => resolve();
-      } catch {
+        tx.onerror = () => {
+          console.error('PostCache clearCache transaction error:', tx.error);
+          resolve();
+        };
+      } catch (e) {
+        console.error('PostCache clearCache error:', e);
         resolve();
       }
     });
@@ -469,18 +479,31 @@ const App: React.FC = () => {
     ];
     let useProxy: ((url: string) => string) | null = null;
 
+    // SECURITY: Strip auth headers when using CORS proxies
+    const stripAuthHeaders = (opts: RequestInit): RequestInit => {
+      const safeHeaders = new Headers();
+      // Only keep non-sensitive headers
+      if (opts.headers) {
+        const h = opts.headers instanceof Headers ? opts.headers : new Headers(opts.headers as Record<string, string>);
+        h.forEach((v, k) => {
+          if (k.toLowerCase() !== 'authorization') safeHeaders.set(k, v);
+        });
+      }
+      return { ...opts, headers: safeHeaders };
+    };
+
     const corsFetch = async (url: string, opts: RequestInit): Promise<Response> => {
       if (useProxy) {
-        return fetch(useProxy(url), opts);
+        return fetch(useProxy(url), stripAuthHeaders(opts));
       }
       try {
         const resp = await fetch(url, opts);
         return resp;
       } catch (directError) {
-        // CORS error - try proxies
+        // CORS error - try proxies (without auth headers for security)
         for (const proxyFn of CORS_PROXIES) {
           try {
-            const resp = await fetch(proxyFn(url), opts);
+            const resp = await fetch(proxyFn(url), stripAuthHeaders(opts));
             if (resp.ok) {
               useProxy = proxyFn; // Remember working proxy
               console.log('[UltraFetch] Using CORS proxy for subsequent requests');

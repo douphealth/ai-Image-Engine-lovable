@@ -443,7 +443,7 @@ const MediaLibraryBrowser: React.FC<Props> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout>(undefined);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Derived state
   const selectedItems = useMemo(() => 
@@ -597,13 +597,11 @@ const MediaLibraryBrowser: React.FC<Props> = ({
   }, [multiSelect]);
 
   const handleDoubleClick = useCallback((item: MediaItem) => {
-    // Double click = instant select and apply
+    // Double click = instant select and apply with the item directly
     setSelectedIds(new Set([item.id]));
-    // Trigger apply after state update
-    setTimeout(() => {
-      handleApplySelection([item]);
-    }, 0);
-  }, []);
+    onSelect([item], mode);
+    onClose();
+  }, [onSelect, mode, onClose]);
 
   const handleSelectAll = useCallback(() => {
     if (selectedIds.size === items.length) {

@@ -94,26 +94,25 @@ export const useJobQueue = <T, R = void>(options: QueueOptions<T, R>) => {
   }, []);
 
   // Adaptive Throttling Logic
-  const handleSuccess = () => {
+  const handleSuccess = useCallback(() => {
     consecutiveErrorsRef.current = 0;
     // Slowly ramp up if we are below max concurrency
     if (currentConcurrencyRef.current < concurrency && Math.random() > 0.8) {
         currentConcurrencyRef.current++;
         updateState();
     }
-  };
+  }, [concurrency, updateState]);
 
-  const handleError = () => {
+  const handleError = useCallback(async () => {
     consecutiveErrorsRef.current++;
     // Rapidly scale down on errors
     if (consecutiveErrorsRef.current > 2 && currentConcurrencyRef.current > 1) {
         currentConcurrencyRef.current = Math.max(1, currentConcurrencyRef.current - 1);
         updateState();
         // Add a penalty delay
-        return new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
     }
-    return Promise.resolve();
-  };
+  }, [updateState]);
 
   const processJob = useCallback(async (job: QueueJob<T>) => {
     const controller = new AbortController();
@@ -168,10 +167,9 @@ export const useJobQueue = <T, R = void>(options: QueueOptions<T, R>) => {
     const job = queueRef.current.shift()!;
     processJob(job);
     
-    // Try to spawn more if bandwidth allows
+    // Try to spawn more if bandwidth allows — use setTimeout to let UI breathe
     if (activeJobsRef.current.size < currentConcurrencyRef.current && queueRef.current.length > 0) {
-        // Microtask defer to let UI breathe
-        queueMicrotask(() => processNext());
+        setTimeout(() => processNext(), 0);
     }
   }, [onQueueEmpty, processJob]);
 

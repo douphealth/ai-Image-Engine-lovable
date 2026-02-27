@@ -119,13 +119,16 @@ const callOpenAICompatible = async (
 const callGemini = async (
   apiKey: string,
   prompt: string,
-  options?: { maxTokens?: number; jsonMode?: boolean; model?: string }
+  options?: { maxTokens?: number; jsonMode?: boolean; model?: string; signal?: AbortSignal }
 ): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: sanitizeApiKey(apiKey) });
   const modelsToTry = options?.model ? [options.model, ...GEMINI_MODELS] : GEMINI_MODELS;
 
   for (const model of modelsToTry) {
     try {
+      // Check abort before each attempt
+      if (options?.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+      
       const config: any = {};
       if (options?.maxTokens) config.maxOutputTokens = options.maxTokens;
       if (options?.jsonMode) config.responseMimeType = 'application/json';
@@ -133,6 +136,7 @@ const callGemini = async (
       const response = await ai.models.generateContent({ model, contents: prompt, config });
       return response.text || '';
     } catch (e: any) {
+      if (e.name === 'AbortError') throw e;
       const msg = e.message || '';
       const isQuota = msg.includes('RESOURCE_EXHAUSTED') || msg.includes('429');
       if (isQuota && model !== modelsToTry[modelsToTry.length - 1]) {
@@ -162,7 +166,7 @@ const generateWithProvider = async (
     case TextAIProvider.Groq:
       return callOpenAICompatible(GROQ_URL, config.apiKey, GROQ_MODELS, prompt, options);
     case TextAIProvider.Gemini:
-      return callGemini(config.apiKey, prompt, { maxTokens: options?.maxTokens, jsonMode: options?.jsonMode, model: config.model });
+      return callGemini(config.apiKey, prompt, { maxTokens: options?.maxTokens, jsonMode: options?.jsonMode, model: config.model, signal: options?.signal });
     case TextAIProvider.OpenAI:
       return callOpenAICompatible('https://api.openai.com/v1/chat/completions', config.apiKey, ['gpt-4o-mini', 'gpt-3.5-turbo'], prompt, options);
     default:
