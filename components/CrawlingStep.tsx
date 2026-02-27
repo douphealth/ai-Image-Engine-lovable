@@ -14,18 +14,7 @@ import {
   RefreshCwIcon
 } from './icons/Icons';
 
-interface FetchStats {
-  concurrency: number;
-  batchSize: number;
-  avgResponseTime: number;
-  requestsCompleted: number;
-  totalRequests: number;
-  cachedHit: boolean;
-  elapsedMs: number;
-  postsPerSecond: number;
-  bytesDownloaded: number;
-  serverResponseCode: number;
-}
+import type { FetchStats } from '../App';
 
 interface Props {
   progress: CrawlProgress;
@@ -85,6 +74,13 @@ const CrawlingStep: React.FC<Props> = ({ progress, error, stats, onCancel }) => 
     return `~${formatTime(remainingMs)} remaining`;
   }, [stats, progress]);
 
+  const phases = useMemo(() => [
+    { id: 'fetching', label: 'Fetching', icon: <SearchIcon className="w-4 h-4" /> },
+    { id: 'analyzing', label: 'Analyzing', icon: <ImageIcon className="w-4 h-4" /> },
+    { id: 'complete', label: 'Done', icon: <CheckCircle2 className="w-4 h-4" /> },
+  ], []);
+  const currentPhaseIndex = phases.findIndex(p => p.id === progress.phase);
+
   // Error state
   if (error) {
     return (
@@ -104,13 +100,6 @@ const CrawlingStep: React.FC<Props> = ({ progress, error, stats, onCancel }) => 
       </div>
     );
   }
-
-  const phases = [
-    { id: 'fetching', label: 'Fetching', icon: <SearchIcon className="w-4 h-4" /> },
-    { id: 'analyzing', label: 'Analyzing', icon: <ImageIcon className="w-4 h-4" /> },
-    { id: 'complete', label: 'Done', icon: <CheckCircle2 className="w-4 h-4" /> },
-  ];
-  const currentPhaseIndex = phases.findIndex(p => p.id === progress.phase);
 
   return (
     <div className="flex flex-col items-center justify-center bg-surface rounded-3xl shadow-2xl shadow-brand-primary/5 p-10 max-w-3xl mx-auto animate-fade-in border border-border relative overflow-hidden">

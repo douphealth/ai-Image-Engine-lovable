@@ -84,15 +84,14 @@ const wpFetch = async <T = unknown>(
     }
 
     // Try CORS proxies for GET requests
+    // SECURITY: Never send auth headers through third-party CORS proxies
     for (const proxyFn of CORS_PROXIES) {
       try {
         const proxyUrl = proxyFn(url);
-        const proxyHeaders = new Headers();
-        if (authHeader) proxyHeaders.set('Authorization', authHeader);
         
         const response = await fetch(proxyUrl, { 
           ...fetchOptions, 
-          headers: proxyHeaders,
+          headers: new Headers(), // Strip all auth headers
           signal: AbortSignal.timeout(timeout)
         });
         
@@ -338,7 +337,8 @@ const parsePost = (post: Record<string, unknown>): WordPressPost => {
 };
 
 export const fetchPostsPage = async (url: string, user: string, pass: string | undefined, page: number, perPage: number, signal?: AbortSignal): Promise<WordPressPost[]> => {
-  const { data } = await wpFetch<Record<string, unknown>[]>(url, `/posts?per_page=${perPage}&page=${page}&_embed=wp:featuredmedia&context=edit`, user, pass, { signal });
+  // FIXED: Don't use context=edit - it requires elevated permissions many users don't have
+  const { data } = await wpFetch<Record<string, unknown>[]>(url, `/posts?per_page=${perPage}&page=${page}&_embed=wp:featuredmedia`, user, pass, { signal });
   return data.map(parsePost);
 };
 
@@ -360,7 +360,7 @@ export const fetchAllPostsParallel = async (
   try {
       const { data, headers } = await wpFetch<Record<string, unknown>[]>(
         url, 
-        `/posts?per_page=${perPage}&page=1&_embed=wp:featuredmedia&context=edit`, 
+        `/posts?per_page=${perPage}&page=1&_embed=wp:featuredmedia`, 
         user, 
         pass, 
         { signal }
