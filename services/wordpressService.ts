@@ -14,6 +14,8 @@ import {
 import { fetchWithRetry } from './retry';
 import { cachedFetch, generateCacheKey } from './cache';
 import { APIError, AuthenticationError } from './errors';
+import { circuitBreakers, withCircuitBreaker } from './circuitBreaker';
+import { extractContentImages } from './imageUtils';
 
 // ============================================================
 // CORE API UTILITIES
@@ -55,9 +57,11 @@ const wpFetch = async <T = unknown>(
 
   const { timeout = 60000, skipCache, ...fetchOptions } = options;
 
-  // Try direct fetch first
+  // Try direct fetch first, wrapped in circuit breaker
   try {
-    const response = await fetchWithRetry(url, { ...fetchOptions, headers }, { maxRetries: 1 }, timeout);
+    const response = await withCircuitBreaker(circuitBreakers.wordpress, () => 
+      fetchWithRetry(url, { ...fetchOptions, headers }, { maxRetries: 1 }, timeout)
+    );
     const data = await response.json() as T;
     return { data, headers: response.headers };
   } catch (directError) {
@@ -450,54 +454,7 @@ export const analyzePostImages = async (
   return results;
 };
 
-const extractContentImages = (post: WordPressPost): ContentImage[] => {
-  if (typeof window === 'undefined') return [];
-  
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(post.content.rendered, 'text/html');
-  const images: ContentImage[] = [];
-  
-  const imgElements = doc.querySelectorAll('img');
-  
-  imgElements.forEach((img, index) => {
-    let src = img.getAttribute('data-src') || 
-              img.getAttribute('data-lazy-src') || 
-              img.getAttribute('data-original') || 
-              img.getAttribute('src');
-
-    if (!src || src.startsWith('data:')) {
-        const srcset = img.getAttribute('srcset');
-        if (srcset) {
-            const firstCandidate = srcset.split(',')[0].trim().split(' ')[0];
-            if (firstCandidate) src = firstCandidate;
-        }
-    }
-
-    if (!src || src.length < 5 || src.includes('1x1') || src.includes('spacer')) return;
-
-    let isExternal = false;
-    try {
-        if (src.startsWith('http')) {
-             const postHost = new URL(post.link).hostname.replace('www.', '');
-             const imgHost = new URL(src).hostname.replace('www.', '');
-             isExternal = !imgHost.includes(postHost);
-        }
-    } catch (e) {}
-
-    images.push({
-      src,
-      alt: img.getAttribute('alt') || '',
-      width: parseInt(img.getAttribute('width') || '0') || 0,
-      height: parseInt(img.getAttribute('height') || '0') || 0,
-      position: 0,
-      paragraphIndex: index, 
-      isExternal,
-      quality: 'medium'
-    });
-  });
-  
-  return images;
-};
+// extractContentImages is now imported from ./imageUtils (single source of truth)
 
 const analyzeImageDistribution = (post: WordPressPost, images: ContentImage[]) => {
   const pCount = (post.content.rendered.match(/<p/g) || []).length;
@@ -546,14 +503,26 @@ export const updatePostContent = async (
   imageUrl: string,
   imageAlt: string
 ): Promise<WordPressPost> => {
-  const { data: currentPost } = await wpFetch<any>(
-    config.url,
-    `/posts/${postId}?context=edit`,
-    config.username,
-    config.appPassword
-  );
-
-  let content = currentPost.content.raw || currentPost.content.rendered || '';
+  // Fetch current post content (try context=edit, fall back to rendered)
+  let content = '';
+  try {
+    const { data: currentPost } = await wpFetch<any>(
+      config.url,
+      `/posts/${postId}?context=edit`,
+      config.username,
+      config.appPassword
+    );
+    content = currentPost.content.raw || currentPost.content.rendered || '';
+  } catch {
+    // context=edit requires elevated permissions; fall back to rendered
+    const { data: currentPost } = await wpFetch<any>(
+      config.url,
+      `/posts/${postId}`,
+      config.username,
+      config.appPassword
+    );
+    content = currentPost.content.rendered || '';
+  }
   
   const imageHtml = `
 <!-- wp:image {"sizeSlug":"large"} -->
@@ -598,19 +567,23 @@ export const updateMediaAltText = async (
 // CONTENT IMAGE MANIPULATION
 // ============================================================
 
+// Helper: fetch post content with graceful fallback from context=edit
+const fetchPostContent = async (config: WordPressCredentials, postId: number): Promise<string> => {
+  try {
+    const { data } = await wpFetch<any>(config.url, `/posts/${postId}?context=edit`, config.username, config.appPassword);
+    return data.content.raw || data.content.rendered || '';
+  } catch {
+    const { data } = await wpFetch<any>(config.url, `/posts/${postId}`, config.username, config.appPassword);
+    return data.content.rendered || '';
+  }
+};
+
 export const deleteContentImage = async (
   config: WordPressCredentials,
   post: WordPressPost,
   imageUrlToDelete: string
 ): Promise<WordPressPost> => {
-    const { data: currentPost } = await wpFetch<any>(
-        config.url,
-        `/posts/${post.id}?context=edit`,
-        config.username,
-        config.appPassword
-    );
-
-    let content = currentPost.content.raw || currentPost.content.rendered || '';
+    let content = await fetchPostContent(config, post.id);
     
     const doc = new DOMParser().parseFromString(content, 'text/html');
     const images = Array.from(doc.querySelectorAll('img'));
@@ -649,16 +622,8 @@ export const replaceContentImage = async (
   newImageUrl: string,
   newAltText: string
 ): Promise<WordPressPost> => {
-    const { data: currentPost } = await wpFetch<any>(
-        config.url,
-        `/posts/${post.id}?context=edit`,
-        config.username,
-        config.appPassword
-    );
-
-    let content = currentPost.content.raw || currentPost.content.rendered || '';
+    let content = await fetchPostContent(config, post.id);
     content = content.split(oldImageUrl).join(newImageUrl);
-    
     return updatePost(config, post.id, { content });
 };
 
