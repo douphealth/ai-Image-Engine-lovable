@@ -749,4 +749,4 @@ const ResultsStep: React.FC<Props> = ({
   );
 };
 
-export default ResultsStep;
+export default React.memo(ResultsStep);
