@@ -503,14 +503,26 @@ export const updatePostContent = async (
   imageUrl: string,
   imageAlt: string
 ): Promise<WordPressPost> => {
-  const { data: currentPost } = await wpFetch<any>(
-    config.url,
-    `/posts/${postId}?context=edit`,
-    config.username,
-    config.appPassword
-  );
-
-  let content = currentPost.content.raw || currentPost.content.rendered || '';
+  // Fetch current post content (try context=edit, fall back to rendered)
+  let content = '';
+  try {
+    const { data: currentPost } = await wpFetch<any>(
+      config.url,
+      `/posts/${postId}?context=edit`,
+      config.username,
+      config.appPassword
+    );
+    content = currentPost.content.raw || currentPost.content.rendered || '';
+  } catch {
+    // context=edit requires elevated permissions; fall back to rendered
+    const { data: currentPost } = await wpFetch<any>(
+      config.url,
+      `/posts/${postId}`,
+      config.username,
+      config.appPassword
+    );
+    content = currentPost.content.rendered || '';
+  }
   
   const imageHtml = `
 <!-- wp:image {"sizeSlug":"large"} -->
