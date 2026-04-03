@@ -14,6 +14,8 @@ import {
 import { fetchWithRetry } from './retry';
 import { cachedFetch, generateCacheKey } from './cache';
 import { APIError, AuthenticationError } from './errors';
+import { circuitBreakers, withCircuitBreaker } from './circuitBreaker';
+import { extractContentImages } from './imageUtils';
 
 // ============================================================
 // CORE API UTILITIES
