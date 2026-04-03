@@ -57,9 +57,11 @@ const wpFetch = async <T = unknown>(
 
   const { timeout = 60000, skipCache, ...fetchOptions } = options;
 
-  // Try direct fetch first
+  // Try direct fetch first, wrapped in circuit breaker
   try {
-    const response = await fetchWithRetry(url, { ...fetchOptions, headers }, { maxRetries: 1 }, timeout);
+    const response = await withCircuitBreaker(circuitBreakers.wordpress, () => 
+      fetchWithRetry(url, { ...fetchOptions, headers }, { maxRetries: 1 }, timeout)
+    );
     const data = await response.json() as T;
     return { data, headers: response.headers };
   } catch (directError) {
