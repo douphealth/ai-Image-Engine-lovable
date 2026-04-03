@@ -454,54 +454,7 @@ export const analyzePostImages = async (
   return results;
 };
 
-const extractContentImages = (post: WordPressPost): ContentImage[] => {
-  if (typeof window === 'undefined') return [];
-  
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(post.content.rendered, 'text/html');
-  const images: ContentImage[] = [];
-  
-  const imgElements = doc.querySelectorAll('img');
-  
-  imgElements.forEach((img, index) => {
-    let src = img.getAttribute('data-src') || 
-              img.getAttribute('data-lazy-src') || 
-              img.getAttribute('data-original') || 
-              img.getAttribute('src');
-
-    if (!src || src.startsWith('data:')) {
-        const srcset = img.getAttribute('srcset');
-        if (srcset) {
-            const firstCandidate = srcset.split(',')[0].trim().split(' ')[0];
-            if (firstCandidate) src = firstCandidate;
-        }
-    }
-
-    if (!src || src.length < 5 || src.includes('1x1') || src.includes('spacer')) return;
-
-    let isExternal = false;
-    try {
-        if (src.startsWith('http')) {
-             const postHost = new URL(post.link).hostname.replace('www.', '');
-             const imgHost = new URL(src).hostname.replace('www.', '');
-             isExternal = !imgHost.includes(postHost);
-        }
-    } catch (e) {}
-
-    images.push({
-      src,
-      alt: img.getAttribute('alt') || '',
-      width: parseInt(img.getAttribute('width') || '0') || 0,
-      height: parseInt(img.getAttribute('height') || '0') || 0,
-      position: 0,
-      paragraphIndex: index, 
-      isExternal,
-      quality: 'medium'
-    });
-  });
-  
-  return images;
-};
+// extractContentImages is now imported from ./imageUtils (single source of truth)
 
 const analyzeImageDistribution = (post: WordPressPost, images: ContentImage[]) => {
   const pCount = (post.content.rendered.match(/<p/g) || []).length;
