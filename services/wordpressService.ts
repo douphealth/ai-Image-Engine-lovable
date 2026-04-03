@@ -567,19 +567,23 @@ export const updateMediaAltText = async (
 // CONTENT IMAGE MANIPULATION
 // ============================================================
 
+// Helper: fetch post content with graceful fallback from context=edit
+const fetchPostContent = async (config: WordPressCredentials, postId: number): Promise<string> => {
+  try {
+    const { data } = await wpFetch<any>(config.url, `/posts/${postId}?context=edit`, config.username, config.appPassword);
+    return data.content.raw || data.content.rendered || '';
+  } catch {
+    const { data } = await wpFetch<any>(config.url, `/posts/${postId}`, config.username, config.appPassword);
+    return data.content.rendered || '';
+  }
+};
+
 export const deleteContentImage = async (
   config: WordPressCredentials,
   post: WordPressPost,
   imageUrlToDelete: string
 ): Promise<WordPressPost> => {
-    const { data: currentPost } = await wpFetch<any>(
-        config.url,
-        `/posts/${post.id}?context=edit`,
-        config.username,
-        config.appPassword
-    );
-
-    let content = currentPost.content.raw || currentPost.content.rendered || '';
+    let content = await fetchPostContent(config, post.id);
     
     const doc = new DOMParser().parseFromString(content, 'text/html');
     const images = Array.from(doc.querySelectorAll('img'));
@@ -618,16 +622,8 @@ export const replaceContentImage = async (
   newImageUrl: string,
   newAltText: string
 ): Promise<WordPressPost> => {
-    const { data: currentPost } = await wpFetch<any>(
-        config.url,
-        `/posts/${post.id}?context=edit`,
-        config.username,
-        config.appPassword
-    );
-
-    let content = currentPost.content.raw || currentPost.content.rendered || '';
+    let content = await fetchPostContent(config, post.id);
     content = content.split(oldImageUrl).join(newImageUrl);
-    
     return updatePost(config, post.id, { content });
 };
 
