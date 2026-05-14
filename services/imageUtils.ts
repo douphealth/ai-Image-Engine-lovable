@@ -1,6 +1,7 @@
 // services/imageUtils.ts - Shared image extraction utility (single source of truth)
 
 import { WordPressPost, ContentImage } from '../types';
+import { parseSafeHtml } from './sanitize';
 
 /**
  * Extract content images from a WordPress post's HTML content.
@@ -10,8 +11,7 @@ export const extractContentImages = (post: WordPressPost): ContentImage[] => {
   if (typeof window === 'undefined') return [];
   
   try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(post.content.rendered, 'text/html');
+    const doc = parseSafeHtml(post.content.rendered);
     const images: ContentImage[] = [];
     
     doc.querySelectorAll('img').forEach((img, index) => {
