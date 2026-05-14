@@ -1,6 +1,7 @@
 
 // components/ImageGalleryModal.tsx - SOTA Content Image Manager
 
+import { parseSafeHtml } from '../services/sanitize';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { WordPressPost, ContentImage, InsertionPoint, Configuration } from '../types';
 import { deleteContentImage, replaceContentImage, uploadImage } from '../services/wordpressService';
@@ -46,7 +47,7 @@ const ImageGalleryModal: React.FC<Props> = ({
 
   // Parse images from content using SOTA extraction logic
   const contentImages = useMemo<ContentImage[]>(() => {
-    const doc = new DOMParser().parseFromString(post.content.rendered, 'text/html');
+    const doc = parseSafeHtml(post.content.rendered);
     const images: ContentImage[] = [];
     
     doc.querySelectorAll('img').forEach((img, index) => {
@@ -93,7 +94,7 @@ const ImageGalleryModal: React.FC<Props> = ({
 
   // Find gaps in content
   const insertionPoints = useMemo<InsertionPoint[]>(() => {
-    const doc = new DOMParser().parseFromString(post.content.rendered, 'text/html');
+    const doc = parseSafeHtml(post.content.rendered);
     const paragraphs = doc.querySelectorAll('p, h2, h3');
     const points: InsertionPoint[] = [];
     

@@ -1,6 +1,7 @@
 // components/ImageUploadModal.tsx - SOTA Enterprise Image Upload System
 // Supports: Featured Image Upload, Content Image Insertion, AI Auto-Placement, Manual Placement
 
+import { parseSafeHtml } from '../services/sanitize';
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { WordPressPost, Configuration, InsertionPoint } from '../types';
 import { uploadImage, updatePost, updatePostContent } from '../services/wordpressService';
@@ -85,7 +86,7 @@ const ImageUploadModal: React.FC<Props> = ({
   // INSERTION POINTS ANALYSIS
   // ============================================================
   const insertionPoints = useMemo<InsertionPoint[]>(() => {
-    const doc = new DOMParser().parseFromString(post.content.rendered, 'text/html');
+    const doc = parseSafeHtml(post.content.rendered);
     const elements = doc.querySelectorAll('p, h2, h3, ul, ol, blockquote');
     const points: InsertionPoint[] = [];
     let lastImageIndex = -1;
