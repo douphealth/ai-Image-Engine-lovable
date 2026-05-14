@@ -23,12 +23,13 @@ const makePost = (id: number, link = 'https://example.com/p'): WordPressPost => 
 
 describe('PostCache', () => {
   let cache: PostCache;
+  let counter = 0;
 
   beforeEach(async () => {
-    // reset indexedDB between tests
-    const dbs = await indexedDB.databases?.();
-    if (dbs) for (const d of dbs) if (d.name) indexedDB.deleteDatabase(d.name);
+    counter++;
     cache = new PostCache();
+    // Use a unique DB name per test for isolation
+    (cache as any).dbName = `test-cache-${counter}-${Date.now()}`;
     await cache.init();
   });
 
