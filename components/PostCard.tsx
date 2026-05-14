@@ -30,10 +30,7 @@ interface Props {
   viewMode?: 'grid' | 'list' | 'compact';
 }
 
-const stripHtml = (html: string): string => {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  return doc.body.textContent || "";
-};
+import { stripHtml } from '../services/sanitize';
 
 const StatusBadge: React.FC<{ status?: JobStatus; message?: string }> = memo(({ status, message }) => {
   if (!status || status === 'idle') return null;

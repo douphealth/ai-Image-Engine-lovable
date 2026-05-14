@@ -1,5 +1,6 @@
 // components/ImageInsertionModal.tsx - Insert images into post content
 
+import { parseSafeHtml } from '../services/sanitize';
 import React, { useState, useCallback } from 'react';
 import { WordPressPost, Configuration, InsertionPoint } from '../types';
 import { 
@@ -27,7 +28,7 @@ const ImageInsertionModal: React.FC<Props> = ({ post, config, onClose, onInsert 
 
   // Parse content for insertion points
   const insertionPoints = React.useMemo<InsertionPoint[]>(() => {
-    const doc = new DOMParser().parseFromString(post.content.rendered, 'text/html');
+    const doc = parseSafeHtml(post.content.rendered);
     const elements = doc.querySelectorAll('p, h2, h3, ul, ol, blockquote');
     const points: InsertionPoint[] = [];
     
