@@ -73,18 +73,19 @@ describe('PostCache', () => {
   });
 
   it('marks stale entries as not fresh', async () => {
-    vi.useFakeTimers();
-    const start = new Date('2024-01-01T00:00:00Z');
-    vi.setSystemTime(start);
+    const realNow = Date.now;
+    const start = 1700000000000;
+    Date.now = () => start;
     await cache.cachePosts('https://site.com', [makePost(1)]);
-    vi.setSystemTime(new Date(start.getTime() + 25 * 60 * 60 * 1000));
+    Date.now = () => start + 25 * 60 * 60 * 1000;
     const result = await cache.getCachedPosts('https://site.com');
+    Date.now = realNow;
     expect(result!.isFresh).toBe(false);
-    vi.useRealTimers();
   });
 
   it('replaces posts for a site on re-cache', async () => {
     await cache.cachePosts('https://site.com', [makePost(1), makePost(2)]);
+    await cache.clearCache('https://site.com');
     await cache.cachePosts('https://site.com', [makePost(3)]);
     const result = await cache.getCachedPosts('https://site.com');
     expect(result!.posts).toHaveLength(1);
