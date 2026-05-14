@@ -53,10 +53,8 @@ const PENDING_STATUSES: JobStatus[] = [
   'generating_schema', 'inserting_schema', 'generating_tldr', 'inserting_tldr', 'aeo_auditing',
 ];
 
-const stripHtml = (html: string): string => {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  return doc.body.textContent?.toLowerCase() || '';
-};
+import { stripHtml as safeStripHtml } from '../services/sanitize';
+const stripHtml = (html: string): string => safeStripHtml(html).toLowerCase();
 
 export const useFilteredPosts = (options: UseFilteredPostsOptions): UseFilteredPostsResult => {
   const { 

@@ -29,10 +29,7 @@ const isHeuristicMode = (config: AnalysisAIConfig): boolean => {
   return !config.apiKey;
 };
 
-const stripHtml = (html: string): string => {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  return doc.body.textContent || "";
-};
+import { stripHtml } from './sanitize';
 
 const extractJson = (text: string): string | null => {
   try {
